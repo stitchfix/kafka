@@ -64,7 +64,7 @@ class WorkerSinkTask extends WorkerTask {
 
     private final WorkerConfig workerConfig;
     private final SinkTask task;
-    private Map<String, String> taskConfig;
+    private TaskConfig taskConfig;
     private final Time time;
     private final Converter keyConverter;
     private final Converter valueConverter;
@@ -121,7 +121,7 @@ class WorkerSinkTask extends WorkerTask {
     @Override
     public void initialize(TaskConfig taskConfig) {
         try {
-            this.taskConfig = taskConfig.originalsStrings();
+            this.taskConfig = taskConfig;
             this.consumer = createConsumer();
             this.context = new WorkerSinkTaskContext(consumer);
         } catch (Throwable t) {
@@ -257,14 +257,15 @@ class WorkerSinkTask extends WorkerTask {
      * Initializes and starts the SinkTask.
      */
     protected void initializeAndStart() {
-        String topicsStr = taskConfig.get(SinkTask.TOPICS_CONFIG);
+        Map<String, String> taskConfigOriginals = taskConfig.originalsStrings();
+        String topicsStr = taskConfigOriginals.get(SinkTask.TOPICS_CONFIG);
         if (topicsStr == null || topicsStr.isEmpty())
             throw new ConnectException("Sink tasks require a list of topics.");
         String[] topics = topicsStr.split(",");
         consumer.subscribe(Arrays.asList(topics), new HandleRebalance());
         log.debug("{} Initializing and starting task for topics {}", this, topics);
         task.initialize(context);
-        task.start(taskConfig);
+        task.start(taskConfigOriginals);
         log.info("{} Sink task finished initialization and start", this);
     }
 
@@ -434,6 +435,7 @@ class WorkerSinkTask extends WorkerTask {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer");
 
         props.putAll(workerConfig.originalsWithPrefix("consumer."));
+        props.putAll(taskConfig.originalsWithPrefix("consumer."));
 
         KafkaConsumer<byte[], byte[]> newConsumer;
         try {

@@ -441,7 +441,11 @@ public class Worker {
                     internalKeyConverter, internalValueConverter);
             OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetBackingStore, id.connector(),
                     internalKeyConverter, internalValueConverter);
-            KafkaProducer<byte[], byte[]> producer = new KafkaProducer<>(producerProps);
+
+            Map<String, Object> props = new HashMap<>();
+            props.putAll(producerProps);
+            props.putAll(connConfig.originalsWithPrefix("producer."));
+            KafkaProducer<byte[], byte[]> producer = new KafkaProducer<>(props);
             return new WorkerSourceTask(id, (SourceTask) task, statusListener, initialState, keyConverter,
                     valueConverter, transformationChain, producer, offsetReader, offsetWriter, config, metrics, loader, time);
         } else if (task instanceof SinkTask) {
